@@ -1,23 +1,35 @@
 import type { MessageType, StorageThreadType } from '../memory/types';
 import { MastraStorage } from './base';
 import type { TABLE_NAMES } from './constants';
+import type { DefaultStorage, type LibSQLConfig } from './libsql';
 import type { EvalRow, StorageColumn, StorageGetMessagesArg } from './types';
-import type { ActionCtx } from '../../../../../convex/_generated/server';
 
-export type DefaultProxyStorageConfig = {};
-declare global {
-  var ctx: ActionCtx;
-}
 /**
- * A proxy for the DefaultStorage to allow for dynamically loading the storage in a constructor
+ * A proxy for the DefaultStorage (LibSQLStore) to allow for dynamically loading the storage in a constructor
  */
 export class DefaultProxyStorage extends MastraStorage {
-  storageConfig: DefaultProxyStorageConfig;
+  private storage: DefaultStorage | null = null;
+  private storageConfig: LibSQLConfig;
+  private isInitializingPromise: Promise<void> | null = null;
 
-  constructor({ config }: { config: DefaultProxyStorageConfig }) {
+  constructor({ config }: { config: LibSQLConfig }) {
     super({ name: 'DefaultStorage' });
-    this.shouldCacheInit = true;
     this.storageConfig = config;
+  }
+
+  private setupStorage() {
+    if (!this.isInitializingPromise) {
+      this.isInitializingPromise = new Promise((resolve, reject) => {
+        import('./libsql')
+          .then(({ DefaultStorage }) => {
+            this.storage = new DefaultStorage({ config: this.storageConfig });
+            resolve();
+          })
+          .catch(reject);
+      });
+    }
+
+    return this.isInitializingPromise;
   }
 
   async createTable({
@@ -27,43 +39,43 @@ export class DefaultProxyStorage extends MastraStorage {
     tableName: TABLE_NAMES;
     schema: Record<string, StorageColumn>;
   }): Promise<void> {
-    // nothing to do here. tables are already in schema
-    return;
+    await this.setupStorage();
+    return this.storage!.createTable({ tableName, schema });
   }
 
   async clearTable({ tableName }: { tableName: TABLE_NAMES }): Promise<void> {
-    // TODO: use action to clear table
-    return;
+    await this.setupStorage();
+    return this.storage!.clearTable({ tableName });
   }
 
   async insert({ tableName, record }: { tableName: TABLE_NAMES; record: Record<string, any> }): Promise<void> {
-    // TODO: use action to insert
-    return;
+    await this.setupStorage();
+    return this.storage!.insert({ tableName, record });
   }
 
   async batchInsert({ tableName, records }: { tableName: TABLE_NAMES; records: Record<string, any>[] }): Promise<void> {
-    // TODO: use action to batch insert
-    return;
+    await this.setupStorage();
+    return this.storage!.batchInsert({ tableName, records });
   }
 
   async load<R>({ tableName, keys }: { tableName: TABLE_NAMES; keys: Record<string, string> }): Promise<R | null> {
-    // TODO: use action to load
-    return null;
+    await this.setupStorage();
+    return this.storage!.load<R>({ tableName, keys });
   }
 
   async getThreadById({ threadId }: { threadId: string }): Promise<StorageThreadType | null> {
-    // TODO: use action to get thread by id
-    return null;
+    await this.setupStorage();
+    return this.storage!.getThreadById({ threadId });
   }
 
   async getThreadsByResourceId({ resourceId }: { resourceId: string }): Promise<StorageThreadType[]> {
-    // TODO: use action to get threads by resource id
-    return [];
+    await this.setupStorage();
+    return this.storage!.getThreadsByResourceId({ resourceId });
   }
 
   async saveThread({ thread }: { thread: StorageThreadType }): Promise<StorageThreadType> {
-    // TODO: use action to save thread
-    return thread;
+    await this.setupStorage();
+    return this.storage!.saveThread({ thread });
   }
 
   async updateThread({
@@ -75,28 +87,28 @@ export class DefaultProxyStorage extends MastraStorage {
     title: string;
     metadata: Record<string, unknown>;
   }): Promise<StorageThreadType> {
-    // TODO: use action to update thread
-    return { id, title, metadata, resourceId: '', createdAt: new Date(), updatedAt: new Date() };
+    await this.setupStorage();
+    return this.storage!.updateThread({ id, title, metadata });
   }
 
   async deleteThread({ threadId }: { threadId: string }): Promise<void> {
-    // TODO: use action to delete thread
-    return;
+    await this.setupStorage();
+    return this.storage!.deleteThread({ threadId });
   }
 
   async getMessages<T extends MessageType[]>({ threadId, selectBy }: StorageGetMessagesArg): Promise<T> {
-    // TODO: use action to get messages
-    return [] as unknown as T;
+    await this.setupStorage();
+    return this.storage!.getMessages<T>({ threadId, selectBy });
   }
 
   async saveMessages({ messages }: { messages: MessageType[] }): Promise<MessageType[]> {
-    // TODO: use action to save messages
-    return messages;
+    await this.setupStorage();
+    return this.storage!.saveMessages({ messages });
   }
 
   async getEvalsByAgentName(agentName: string, type?: 'test' | 'live'): Promise<EvalRow[]> {
-    // TODO: use action to get evals by agent name
-    return [];
+    await this.setupStorage();
+    return this.storage!.getEvalsByAgentName(agentName, type);
   }
 
   async getTraces(options?: {
@@ -106,7 +118,7 @@ export class DefaultProxyStorage extends MastraStorage {
     perPage: number;
     attributes?: Record<string, string>;
   }): Promise<any[]> {
-    // TODO: use action to get traces
-    return [];
+    await this.setupStorage();
+    return this.storage!.getTraces(options);
   }
 }

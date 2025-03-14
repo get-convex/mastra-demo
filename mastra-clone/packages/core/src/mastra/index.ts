@@ -4,7 +4,6 @@ import { LogLevel, createLogger, noopLogger } from '../logger';
 import type { Logger } from '../logger';
 import type { MastraMemory } from '../memory/memory';
 import type { MastraStorage } from '../storage';
-import { DefaultProxyStorage } from '../storage/default-proxy-storage';
 import { InstrumentClass, Telemetry } from '../telemetry';
 import type { OtelConfig } from '../telemetry';
 import type { MastraTTS } from '../tts';
@@ -115,9 +114,7 @@ export class Mastra<
 
     let storage = config?.storage;
     if (!storage) {
-      storage = new DefaultProxyStorage({
-        config: {},
-      });
+      throw new Error('Storage is required for the slim version');
     }
 
     /*

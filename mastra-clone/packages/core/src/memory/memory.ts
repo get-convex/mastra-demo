@@ -1,5 +1,3 @@
-import { existsSync } from 'fs';
-import { join } from 'path';
 import type {
   AssistantContent,
   ToolResultPart,
@@ -12,7 +10,6 @@ import type {
 
 import { MastraBase } from '../base';
 import type { MastraStorage, StorageGetMessagesArg } from '../storage';
-import { DefaultProxyStorage } from '../storage/default-proxy-storage';
 import type { CoreTool } from '../tools';
 import { deepMerge } from '../utils';
 import type { MastraVector } from '../vector';
@@ -41,16 +38,19 @@ export abstract class MastraMemory extends MastraBase {
   constructor(config: { name: string } & SharedMemoryConfig) {
     super({ component: 'MEMORY', name: config.name });
 
-    this.storage =
-      config.storage ||
-      new DefaultProxyStorage({
-        config: {
-          url: 'file:memory.db',
-        },
-      });
+    if (!config.storage) {
+      throw new Error('Storage is required for the slim version');
+    }
+    this.storage = config.storage;
 
+    if (!config.vector) {
+      throw new Error('Vector is required for the slim version');
+    }
     this.vector = config.vector;
 
+    if (!config.embedder) {
+      throw new Error('Embedder is required for the slim version');
+    }
     this.embedder = config.embedder;
 
     if (config.options) {

@@ -11,7 +11,7 @@ import { updateWorkingMemoryTool } from './tools/working-memory';
  * and message injection.
  */
 export class Memory extends MastraMemory {
-  constructor(config: SharedMemoryConfig) {
+  constructor(config: SharedMemoryConfig = {}) {
     super({ name: 'Memory', ...config });
 
     const mergedConfig = this.getMergedThreadConfig({
