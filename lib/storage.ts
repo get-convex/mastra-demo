@@ -1,11 +1,11 @@
-import type { MessageType, StorageThreadType } from "@mastra/core/memory/types";
+import type { MessageType, StorageThreadType } from "@mastra/core/memory";
 import { MastraStorage } from "@mastra/core/storage";
-import type { TABLE_NAMES } from "@mastra/core/storage/constants";
+import type { TABLE_NAMES } from "./constants";
 import type {
   EvalRow,
   StorageColumn,
   StorageGetMessagesArg,
-} from "@mastra/core/storage/types";
+} from "@mastra/core/storage";
 import type { GenericActionCtx, GenericDataModel } from "convex/server";
 
 export type ConvexStorageConfig = {};

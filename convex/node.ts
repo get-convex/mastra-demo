@@ -2,9 +2,9 @@
 import { Mastra } from "@mastra/core";
 import { Agent } from "@mastra/core/agent";
 import { action } from "./_generated/server";
-import { Step } from "@mastra/core/workflows/step";
+import { Step } from "@mastra/core/workflows";
 import { Memory } from "@mastra/memory";
-import { Workflow } from "@mastra/core";
+import { Workflow } from "@mastra/core/workflows";
 import { openai } from "@ai-sdk/openai";
 import { testTool } from "./notnode";
 import { ConvexStorage } from "../lib/storage";
@@ -39,11 +39,11 @@ const workflow = new Workflow({
   retryConfig: { attempts: 2, delay: 1000 },
 }).step(step);
 
-const mastra = new Mastra({
-  agents: { test: agent },
-  workflows: { test: workflow },
-  storage,
-});
+// const mastra = new Mastra({
+//   agents: { test: agent },
+//   workflows: { test: workflow },
+//   storage,
+// });
 
 export const a = action({
   args: {},

@@ -4,7 +4,7 @@ import {
   TABLE_THREADS,
   TABLE_TRACES,
   TABLE_WORKFLOW_SNAPSHOT,
-} from "@mastra/core/storage/constants";
+} from "../lib/constants";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
