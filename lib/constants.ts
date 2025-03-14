@@ -7,11 +7,11 @@ export const TABLE_THREADS = "mastra_threads";
 export const TABLE_TRACES = "mastra_traces";
 export type { TABLE_NAMES };
 
-type _typeAssertion = (
+type _OURS =
   | typeof TABLE_WORKFLOW_SNAPSHOT
   | typeof TABLE_EVALS
   | typeof TABLE_MESSAGES
   | typeof TABLE_THREADS
-  | typeof TABLE_TRACES
-) &
-  TABLE_NAMES;
+  | typeof TABLE_TRACES;
+const _typeAssertion: _OURS = "" as TABLE_NAMES;
+const _otherAssertion: TABLE_NAMES = "" as _OURS;
