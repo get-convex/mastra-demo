@@ -1,0 +1,19 @@
+{
+  "name": "examples-graph-rag",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "pnpx tsx index.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "latest",
+    "@mastra/core": "workspace:*",
+    "@mastra/pg": "workspace:*",
+    "@mastra/rag": "workspace:*",
+    "ai": "latest"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.7"
+  },
+  "version": "0.0.1"
+}

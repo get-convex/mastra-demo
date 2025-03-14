@@ -1,0 +1,16 @@
+{
+  "name": "examples-cot-workflow-rag",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "pnpx tsx index.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "latest",
+    "@mastra/pg": "workspace:*",
+    "@mastra/rag": "workspace:*",
+    "ai": "latest",
+    "zod": "^3.24.2"
+  },
+  "version": "0.0.1"
+}

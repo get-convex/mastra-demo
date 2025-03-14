@@ -1,0 +1,26 @@
+{
+  "name": "examples-stock-price-tool",
+  "type": "module",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "dev": "mastra dev",
+    "test": "cross-env NODE_OPTIONS='--experimental-vm-modules --max-old-space-size=8192' jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@ai-sdk/openai": "latest",
+    "@mastra/core": "workspace:*",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "jest": "^29.7.0",
+    "mastra": "workspace:*",
+    "ts-jest": "^29.2.6"
+  },
+  "version": "0.0.1"
+}

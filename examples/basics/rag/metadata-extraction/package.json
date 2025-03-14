@@ -1,0 +1,15 @@
+{
+  "name": "examples-metadata-extraction",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "pnpx tsx index.ts"
+  },
+  "dependencies": {
+    "@mastra/rag": "workspace:*"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.7"
+  },
+  "version": "0.0.1"
+}
