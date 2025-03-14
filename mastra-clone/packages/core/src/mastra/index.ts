@@ -40,10 +40,11 @@ export interface Config<
   memory?: MastraMemory;
 }
 
-@InstrumentClass({
+const instrument = InstrumentClass({
   prefix: 'mastra',
   excludeMethods: ['getLogger', 'getTelemetry'],
-})
+});
+
 export class Mastra<
   TAgents extends Record<string, Agent<any>> = Record<string, Agent<any>>,
   TWorkflows extends Record<string, Workflow> = Record<string, Workflow>,
@@ -443,3 +444,5 @@ This is a warning for now, but will throw an error in the future
     return await this.#logger.getLogs(transportId);
   }
 }
+
+instrument(Mastra);

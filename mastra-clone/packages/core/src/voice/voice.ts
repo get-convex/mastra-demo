@@ -12,10 +12,10 @@ export interface VoiceConfig {
   speaker?: string;
 }
 
-@InstrumentClass({
+const instrument = InstrumentClass({
   prefix: 'voice',
   excludeMethods: ['__setTools', '__setLogger', '__setTelemetry', '#log'],
-})
+});
 export abstract class MastraVoice extends MastraBase {
   protected listeningModel?: BuiltInModelConfig;
   protected speechModel?: BuiltInModelConfig;
@@ -79,3 +79,4 @@ export abstract class MastraVoice extends MastraBase {
     }>
   >;
 }
+instrument(MastraVoice);

@@ -44,10 +44,11 @@ import type {
 
 export * from './types';
 
-@InstrumentClass({
+const instrument = InstrumentClass({
   prefix: 'agent',
   excludeMethods: ['__setTools', '__setLogger', '__setTelemetry', 'log'],
-})
+});
+
 export class Agent<
   TTools extends ToolsInput = ToolsInput,
   TMetrics extends Record<string, Metric> = Record<string, Metric>,
@@ -1187,3 +1188,4 @@ export class Agent<
     }
   }
 }
+instrument(Agent);

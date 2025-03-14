@@ -11,10 +11,10 @@ export interface TTSConfig {
   model: BuiltInModelConfig;
 }
 
-@InstrumentClass({
+const instrument = InstrumentClass({
   prefix: 'tts',
   excludeMethods: ['__setTools', '__setLogger', '__setTelemetry', '#log'],
-})
+});
 export abstract class MastraTTS extends MastraBase {
   model: BuiltInModelConfig;
   constructor({ model }: TTSConfig) {
@@ -38,3 +38,4 @@ export abstract class MastraTTS extends MastraBase {
   abstract generate({ text }: { text: string }): Promise<any>;
   abstract stream({ text }: { text: string }): Promise<any>;
 }
+instrument(MastraTTS);
