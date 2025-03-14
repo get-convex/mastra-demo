@@ -1,5 +1,5 @@
 "use node";
-import { Mastra } from "@mastra/core";
+import { Mastra } from "../lib/mastra";
 import { Agent } from "@mastra/core/agent";
 import { action } from "./_generated/server";
 import { Step } from "@mastra/core/workflows";
@@ -39,11 +39,11 @@ const workflow = new Workflow({
   retryConfig: { attempts: 2, delay: 1000 },
 }).step(step);
 
-// const mastra = new Mastra({
-//   agents: { test: agent },
-//   workflows: { test: workflow },
-//   storage,
-// });
+const mastra = new Mastra({
+  agents: { test: agent },
+  workflows: { test: workflow },
+  storage,
+});
 
 export const a = action({
   args: {},
