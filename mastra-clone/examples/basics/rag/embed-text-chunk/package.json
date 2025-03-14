@@ -1,0 +1,14 @@
+{
+  "name": "examples-embed-text-chunk",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "pnpx tsx index.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "latest",
+    "@mastra/rag": "workspace:*",
+    "ai": "latest"
+  },
+  "version": "0.0.1"
+}

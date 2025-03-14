@@ -1,0 +1,179 @@
+name: Create Stable Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no actual publish)'
+        required: false
+        type: boolean
+        default: false
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  release:
+    name: Changesets Release
+    if: ${{ github.repository == 'mastra-ai/mastra' }}
+    runs-on: ubuntu-latest
+    outputs:
+      exited_prerelease: ${{ steps.exit-prerelease-mode.outputs.executed }}
+
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ vars.DANE_APP_ID }}
+          private-key: ${{ secrets.DANE_APP_PRIVATE_KEY }}
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - run: |
+          cat <<- EOF > $HOME/.netrc
+            machine github.com
+            login ${{ steps.app-token.outputs.app-slug }}
+            password ${{ steps.app-token.outputs.token }}
+            machine api.github.com
+            login ${{ steps.app-token.outputs.app-slug }}
+            password ${{ steps.app-token.outputs.token }}
+          EOF
+          git config --global user.name '${{ steps.app-token.outputs.app-slug }}[bot]'
+          git config --global user.email '${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com'
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          # Fetch entire git history so  Changesets can generate changelogs
+          # with the correct commits
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check for pre.json file existence
+        id: check_files
+        uses: andstor/file-existence-action@v3.0.0
+        with:
+          files: '.changeset/pre.json'
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          run_install: false
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Setup npm auth
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+
+      - name: Exit prerelease mode
+        id: exit-prerelease-mode
+        # If .changeset/pre.json does not exist and we did not recently exit
+        # prerelease mode, enter prerelease mode with tag alpha
+        if: steps.check_files.outputs.files_exists == 'true'
+        run: |
+          pnpm changeset pre exit
+          pnpm changeset version
+          git add -A
+          git commit -m 'chore: version - exit prerelease mode' --no-verify
+          git push
+          echo "executed=true" >> "$GITHUB_OUTPUT"
+          pnpm install
+
+      - name: Push version changes
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git push
+          pnpm install
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Publish packages
+        if: ${{ !inputs.dry_run }}
+        run: pnpm publish -r --access public
+
+      - name: Publish packages - dry run
+        if: ${{ inputs.dry_run }}
+        run: pnpm publish -r --dry-run --access public
+
+      - name: Add tags
+        run: |
+          pnpm changeset tag;
+          git push --follow-tags
+
+  enter_prerelease:
+    needs: release
+    if: ${{ github.repository == 'mastra-ai/mastra' && needs.release.outputs.exited_prerelease == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ vars.DANE_APP_ID }}
+          private-key: ${{ secrets.DANE_APP_PRIVATE_KEY }}
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - run: |
+          cat <<- EOF > $HOME/.netrc
+            machine github.com
+            login ${{ steps.app-token.outputs.app-slug }}
+            password ${{ steps.app-token.outputs.token }}
+            machine api.github.com
+            login ${{ steps.app-token.outputs.app-slug }}
+            password ${{ steps.app-token.outputs.token }}
+          EOF
+          git config --global user.name '${{ steps.app-token.outputs.app-slug }}[bot]'
+          git config --global user.email '${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com'
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          run_install: false
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Enter prerelease mode
+        run: |
+          git pull
+          pnpm changeset pre enter alpha
+          git add -A
+          git commit -m 'chore: version - enter prerelease mode' --no-verify
+
+      - name: Push prerelease changes
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git push --follow-tags
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

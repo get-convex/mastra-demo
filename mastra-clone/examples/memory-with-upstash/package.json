@@ -1,0 +1,27 @@
+{
+  "name": "memory-with-upstash",
+  "type": "module",
+  "version": "1.0.1",
+  "description": "",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "prestart": "docker compose up -d",
+    "start": "npx bun src/index.ts",
+    "poststart": "docker compose down"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ai-sdk/openai": "latest",
+    "@mastra/core": "workspace:*",
+    "@mastra/memory": "workspace:*",
+    "@mastra/pg": "workspace:*",
+    "@mastra/upstash": "workspace:*"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.7",
+    "tsx": "^4.19.3"
+  }
+}

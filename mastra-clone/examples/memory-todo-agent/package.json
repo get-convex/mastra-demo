@@ -1,0 +1,22 @@
+{
+  "name": "memory-todo-agent",
+  "type": "module",
+  "description": "",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "chat": "bun run src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ai-sdk/openai": "latest",
+    "@mastra/core": "workspace:*",
+    "@mastra/memory": "workspace:*",
+    "ai": "latest",
+    "chalk": "^5.4.1",
+    "ora": "^8.2.0"
+  },
+  "version": "0.1.6-alpha.0"
+}
