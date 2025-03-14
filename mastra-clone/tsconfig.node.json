@@ -25,6 +25,12 @@
     "module": "Preserve",
     "noEmit": true,
 
+    "paths": {
+      "@mastra/core": ["./packages/core/src"],
+      "@mastra/core/*": ["./packages/core/src/*"],
+      "@mastra/core/memory": ["./packages/core/src/memory"]
+    },
+
     /* If your code doesn't run in the DOM: */
     "lib": ["es2022"]
   }
