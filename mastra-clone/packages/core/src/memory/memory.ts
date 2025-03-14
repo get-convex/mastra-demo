@@ -16,8 +16,6 @@ import { DefaultProxyStorage } from '../storage/default-proxy-storage';
 import type { CoreTool } from '../tools';
 import { deepMerge } from '../utils';
 import type { MastraVector } from '../vector';
-import { defaultEmbedder } from '../vector/fastembed';
-import { DefaultVectorDB } from '../vector/libsql';
 
 import type { MessageType, SharedMemoryConfig, StorageThreadType, MemoryConfig, AiMessageType } from './types';
 
@@ -51,33 +49,9 @@ export abstract class MastraMemory extends MastraBase {
         },
       });
 
-    if (config.vector) {
-      this.vector = config.vector;
-    } else {
-      // for backwards compat reasons, check if there's a memory-vector.db in cwd or in cwd/.mastra
-      // if it's there we need to use it, otherwise use the same file:memory.db
-      // We used to need two separate DBs because we would get schema errors
-      // Creating a new index for each vector dimension size fixed that, so we no longer need a separate sqlite db
-      const oldDb = 'memory-vector.db';
-      const hasOldDb = existsSync(join(process.cwd(), oldDb)) || existsSync(join(process.cwd(), '.mastra', oldDb));
-      const newDb = 'memory.db';
+    this.vector = config.vector;
 
-      if (hasOldDb) {
-        this.logger.warn(
-          `Found deprecated Memory vector db file ${oldDb} this db is now merged with the default ${newDb} file. Delete the old one to use the new one. You will need to migrate any data if that's important to you. For now the deprecated path will be used but in a future breaking change we will only use the new db file path.`,
-        );
-      }
-
-      this.vector = new DefaultVectorDB({
-        connectionUrl: hasOldDb ? `file:${oldDb}` : `file:${newDb}`,
-      });
-    }
-
-    if (config.embedder) {
-      this.embedder = config.embedder;
-    } else {
-      this.embedder = defaultEmbedder('bge-small-en-v1.5'); // https://huggingface.co/BAAI/bge-small-en-v1.5#model-list we're using small 1.5 because it's much faster than base 1.5 and only scores slightly worse despite being roughly 100MB smaller - small is ~130MB while base is ~220MB
-    }
+    this.embedder = config.embedder;
 
     if (config.options) {
       this.threadConfig = this.getMergedThreadConfig(config.options);
