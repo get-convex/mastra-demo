@@ -11,6 +11,11 @@ import type { MastraVector } from "@mastra/core/vector";
 import type { Workflow } from "@mastra/core/workflows";
 import type { Mastra as MastraCore } from "@mastra/core";
 
+import crypto from "crypto";
+
+// Some of the packages look for it globally
+global.crypto = crypto as any;
+
 export interface Config<
   TAgents extends Record<string, Agent<any>> = Record<string, Agent<any>>,
   TWorkflows extends Record<string, Workflow> = Record<string, Workflow>,
