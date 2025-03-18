@@ -1,5 +1,5 @@
 "use node";
-import { PgVector } from "@mastra/pg";
+// import { PgVector } from "@mastra/pg";
 import { Mastra } from "@mastra/core/mastra";
 import { Agent } from "@mastra/core/agent";
 import { action } from "./_generated/server";
@@ -7,7 +7,8 @@ import { Step } from "@mastra/core/workflows";
 import { Workflow } from "@mastra/core/workflows";
 import { openai } from "@ai-sdk/openai";
 import { Memory } from "@mastra/memory";
-import { ConvexStorage } from "../lib/storage";
+import { InMemoryStorage } from "../lib/storage";
+import { InMemoryVector } from "../lib/vector";
 
 import crypto from "crypto";
 import { createTool } from "@mastra/core/tools";
@@ -15,11 +16,12 @@ import { createTool } from "@mastra/core/tools";
 // // Some of the packages look for it globally
 global.crypto = crypto as any;
 
-const storage = new ConvexStorage({ config: {} });
+const storage = new InMemoryStorage();
+const vector = new InMemoryVector();
 
-const connectionString =
-  "postgresql://myuser:mypassword@localhost:5433/mydatabase";
-const vector = new PgVector(connectionString);
+// const connectionString =
+//   "postgresql://myuser:mypassword@localhost:5433/mydatabase";
+// const vector = new PgVector(connectionString);
 const embedder = openai.embedding("text-embedding-3-small");
 const memory = new Memory({
   storage,
