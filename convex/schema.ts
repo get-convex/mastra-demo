@@ -1,12 +1,17 @@
-import {
-  TABLE_EVALS,
-  TABLE_MESSAGES,
-  TABLE_THREADS,
-  TABLE_TRACES,
-  TABLE_WORKFLOW_SNAPSHOT,
-} from "../lib/constants";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+
+const TABLE_WORKFLOW_SNAPSHOT = "mastra_workflow_snapshot";
+const TABLE_EVALS = "mastra_evals";
+const TABLE_MESSAGES = "mastra_messages";
+const TABLE_THREADS = "mastra_threads";
+const TABLE_TRACES = "mastra_traces";
+export type TABLE_NAMES =
+  | typeof TABLE_WORKFLOW_SNAPSHOT
+  | typeof TABLE_EVALS
+  | typeof TABLE_MESSAGES
+  | typeof TABLE_THREADS
+  | typeof TABLE_TRACES;
 
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the
