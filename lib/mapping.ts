@@ -126,18 +126,18 @@ const _serializedThread2: Infer<typeof vSerializedThread> =
 // @mastra/core:src/storage/base.ts
 export type SerializedTrace = {
   id: string;
-  parentSpanId: string;
+  parentSpanId?: string | null;
   traceId: string;
   name: string;
   scope: string;
-  kind: string;
-  events: any[];
-  links: any[];
-  status: any;
-  attributes: Record<string, any>;
+  kind: number | bigint;
+  events?: any[];
+  links?: any[];
+  status?: any;
+  attributes?: Record<string, any>;
   startTime: bigint;
   endTime: bigint;
-  other: any;
+  other?: any;
   createdAt: SerializedTimestamp;
 };
 

@@ -21,7 +21,7 @@ export default defineSchema({
     globalRunId: v.string(),
     runId: v.string(),
     createdAt: v.number(),
-  }).index("runId", ["runId", "agentName"]),
+  }).index("agentName", ["agentName", "testInfo.testPath"]),
   messages: defineTable({
     id: v.string(), // TODO: can we juse the _id?
     threadId: v.string(), // TODO: can we use v.id("threads")?
@@ -58,7 +58,7 @@ export default defineSchema({
     name: v.string(),
     traceId: v.string(),
     scope: v.string(),
-    kind: v.number(),
+    kind: v.union(v.number(), v.int64()),
     attributes: v.optional(v.any()),
     status: v.optional(v.any()),
     events: v.optional(v.any()),
@@ -67,5 +67,7 @@ export default defineSchema({
     startTime: v.int64(),
     endTime: v.int64(),
     createdAt: v.number(),
-  }).index("id", ["id"]),
+  })
+    .index("scope", ["scope"])
+    .index("name", ["name"]),
 });

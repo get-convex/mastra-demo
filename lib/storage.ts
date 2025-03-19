@@ -21,6 +21,7 @@ import {
   mastraToConvexTableNames,
   SerializedThread,
   SerializedMessage,
+  SerializedTrace,
 } from "./mapping";
 
 export type ConvexStorageConfig = {
@@ -176,7 +177,6 @@ export class ConvexStorage extends MastraStorage {
   }
 
   async getMessages<T extends MessageType>({
-    threadConfig,
     threadId,
     selectBy,
   }: StorageGetMessagesArg): Promise<T[]> {
@@ -198,7 +198,11 @@ export class ConvexStorage extends MastraStorage {
   }: {
     messages: MessageType[];
   }): Promise<MessageType[]> {
-    // TODO: use action to save messages
+    await this.ctx.runMutation(internal.lib.saveMessages, {
+      messages: messages.map((message) =>
+        mapMastraToSerialized(TABLE_MESSAGES, message),
+      ),
+    });
     return messages;
   }
 
@@ -206,8 +210,11 @@ export class ConvexStorage extends MastraStorage {
     agentName: string,
     type?: "test" | "live",
   ): Promise<EvalRow[]> {
-    // TODO: use action to get evals by agent name
-    return [];
+    const evals = await this.ctx.runQuery(internal.lib.getEvalsByAgentName, {
+      agentName,
+      type,
+    });
+    return evals.map((e) => mapSerializedToMastra(TABLE_EVALS, e));
   }
 
   async getTraces(options?: {
@@ -217,7 +224,31 @@ export class ConvexStorage extends MastraStorage {
     perPage: number;
     attributes?: Record<string, string>;
   }): Promise<any[]> {
-    // TODO: use action to get traces
-    return [];
+    const { name, scope, page, perPage, attributes } = options ?? {};
+    const traces: SerializedTrace[] = [];
+    let cursor: string | null = null;
+    const numItems = perPage ?? 100;
+    const pageNum = page ?? 0;
+    while (true) {
+      const results: {
+        isDone: boolean;
+        continuCursor: string;
+        page: SerializedTrace[];
+      } = await this.ctx.runQuery(internal.lib.getTracesPage, {
+        name,
+        scope,
+        cursor,
+        numItems,
+        attributes,
+      });
+      traces.push(...results.page);
+      // Note: we'll refetch from the beginning on every page.
+      if (results.isDone || traces.length >= numItems * pageNum) {
+        break;
+      }
+    }
+    return traces
+      .slice(pageNum * numItems, (pageNum + 1) * numItems)
+      .map((trace) => mapSerializedToMastra(TABLE_TRACES, trace));
   }
 }

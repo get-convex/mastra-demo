@@ -83,8 +83,10 @@ export const insert = internalMutation({
     document: v.any(),
   },
   handler: async (ctx, args) => {
+    // TODO: split out into inserts per usecase and enforce unique constraints
     await ctx.db.insert(args.tableName as any, args.document);
   },
+  returns: v.null(),
 });
 
 export const batchInsert = internalMutation({
@@ -99,6 +101,7 @@ export const batchInsert = internalMutation({
       }),
     );
   },
+  returns: v.null(),
 });
 
 export const load = internalQuery({
@@ -111,6 +114,7 @@ export const load = internalQuery({
       `Not implemented: load for ${args.tableName}: ${JSON.stringify(args.keys)}`,
     );
   },
+  returns: v.union(v.any(), v.null()),
 });
 
 export const clearTable = internalAction({
@@ -127,6 +131,7 @@ export const clearTable = internalAction({
       }
     }
   },
+  returns: v.null(),
 });
 
 export const clearPage = internalMutation({
@@ -146,6 +151,7 @@ export const clearPage = internalMutation({
     }
     return null;
   },
+  returns: v.union(v.string(), v.null()),
 });
 
 function threadToSerializedMastra(thread: Doc<"threads">): SerializedThread {
@@ -165,6 +171,7 @@ export const getThreadById = internalQuery({
     }
     return threadToSerializedMastra(thread);
   },
+  returns: v.union(vSerializedThread, v.null()),
 });
 
 export const getThreadsByResourceId = internalQuery({
@@ -205,6 +212,7 @@ export const saveThread = internalMutation({
   handler: async (ctx, args) => {
     await ctx.db.insert("threads", args.thread);
   },
+  returns: v.null(),
 });
 
 export const updateThread = internalMutation({
@@ -229,6 +237,7 @@ export const updateThread = internalMutation({
     }
     return threadToSerializedMastra(thread);
   },
+  returns: vSerializedThread,
 });
 
 export const deleteThread = internalMutation({
@@ -243,6 +252,7 @@ export const deleteThread = internalMutation({
     }
     await ctx.db.delete(thread._id);
   },
+  returns: v.null(),
 });
 
 // const vMemoryConfig = v.object({
@@ -291,7 +301,7 @@ const vSelectBy = v.object({
 function messageToSerializedMastra(
   message: Doc<"messages">,
 ): SerializedMessage {
-  const { threadOrder, ...serialized } = message;
+  const { threadOrder, _id, _creationTime, ...serialized } = message;
   return serialized;
 }
 
@@ -375,4 +385,114 @@ export const getMessagesPage = internalQuery({
     return messages.map(messageToSerializedMastra);
   },
   returns: v.array(vSerializedMessage),
+});
+
+export const saveMessages = internalMutation({
+  args: { messages: v.array(vSerializedMessage) },
+  handler: async (ctx, args) => {
+    const messagesByThreadId: Record<string, SerializedMessage[]> = {};
+    for (const message of args.messages) {
+      messagesByThreadId[message.threadId] = [
+        ...(messagesByThreadId[message.threadId] ?? []),
+        message,
+      ];
+    }
+    for (const threadId in messagesByThreadId) {
+      const lastMessage = await ctx.db
+        .query("messages")
+        .withIndex("threadId", (q) => q.eq("threadId", threadId))
+        .order("desc")
+        .first();
+      let threadOrder = lastMessage?.threadOrder ?? 0;
+      for (const message of messagesByThreadId[threadId]) {
+        threadOrder++;
+        await ctx.db.insert("messages", {
+          ...message,
+          threadOrder,
+        });
+      }
+    }
+  },
+  returns: v.null(),
+});
+
+export const getEvalsByAgentName = internalQuery({
+  args: {
+    agentName: v.string(),
+    type: v.optional(v.union(v.literal("test"), v.literal("live"))),
+  },
+  handler: async (ctx, args) => {
+    const evals = await ctx.db
+      .query("evals")
+      .withIndex("agentName", (q) => {
+        const byAgent = q.eq("agentName", args.agentName);
+        if (args.type === "test") {
+          return byAgent.gt("testInfo.testPath", null);
+        } else if (args.type === "live") {
+          return byAgent.lte("testInfo.testPath", null);
+        }
+        return byAgent;
+      })
+      .collect();
+    return evals.map((e) => {
+      const { _id, _creationTime, ...serialized } = e;
+      return serialized;
+    });
+  },
+  returns: v.array(schema.tables.evals.validator),
+});
+
+const MAX_TRACES_SCANNED = 4096;
+export const getTracesPage = internalQuery({
+  args: {
+    name: v.optional(v.string()),
+    scope: v.optional(v.string()),
+    cursor: v.union(v.string(), v.null()),
+    numItems: v.number(),
+    attributes: v.optional(v.record(v.string(), v.string())),
+  },
+  handler: async (ctx, args) => {
+    const { scope, name, cursor, numItems, attributes } = args;
+    const overfetch = (scope ? 1 : 8) * (name ? 1 : 8);
+    const results = await (
+      scope
+        ? ctx.db.query("traces").withIndex("scope", (q) => q.eq("scope", scope))
+        : name
+          ? ctx.db
+              .query("traces")
+              .withIndex("name", (q) =>
+                q.gte("name", name).lt("name", name + "~"),
+              )
+          : ctx.db.query("traces")
+    ).paginate({
+      numItems: Math.min(numItems * overfetch, MAX_TRACES_SCANNED),
+      cursor: cursor,
+    });
+
+    return {
+      isDone: results.isDone,
+      continuCursor: results.continueCursor,
+      page: results.page
+        .filter(
+          (trace) =>
+            (!name || trace.name.startsWith(name)) &&
+            (!scope || trace.scope === scope) &&
+            (!attributes ||
+              Object.entries(attributes).every(
+                ([key, value]) =>
+                  // @ts-ignore
+                  trace[key as any] === value,
+              )),
+        )
+        .map((t) => {
+          const { _id, _creationTime, ...serialized } = t;
+          return serialized;
+        }),
+    };
+  },
+  returns: v.object({
+    isDone: v.boolean(),
+    continuCursor: v.string(),
+    page: v.array(schema.tables.traces.validator),
+  }),
 });
