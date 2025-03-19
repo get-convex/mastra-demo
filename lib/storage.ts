@@ -20,6 +20,7 @@ import {
   mapMastraToSerialized,
   mastraToConvexTableNames,
   SerializedThread,
+  SerializedMessage,
 } from "./mapping";
 
 export type ConvexStorageConfig = {
@@ -164,10 +165,8 @@ export class ConvexStorage extends MastraStorage {
       id,
       title,
       metadata,
-      resourceId: "",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
+    return mapSerializedToMastra(TABLE_THREADS, thread);
   }
 
   async deleteThread({ threadId }: { threadId: string }): Promise<void> {

@@ -8,7 +8,17 @@ import {
   TABLE_TRACES,
   TABLE_WORKFLOW_SNAPSHOT,
 } from "@mastra/core/storage";
-import type { AssistantContent, ToolContent, UserContent } from "ai";
+import type {
+  AssistantContent,
+  DataContent,
+  ToolContent,
+  UserContent,
+} from "ai";
+import { v } from "convex/values";
+import { Infer } from "convex/values";
+import { SerializeUrlsAndUint8Arrays, vToolContent } from "../convex/ai/types";
+import { vAssistantContent } from "../convex/ai/types";
+import { vUserContent } from "../convex/ai/types";
 
 // Define the runtime constants first
 export const mastraToConvexTableNames = {
@@ -46,6 +56,7 @@ export type MastraRowTypeMap = {
 };
 
 export type SerializedTimestamp = number;
+const vSerializedTimestamp = v.number();
 
 export type SerializedSnapshot = Omit<
   WorkflowRow,
@@ -60,9 +71,34 @@ export type SerializedEval = Omit<EvalRow, "createdAt"> & {
   createdAt: SerializedTimestamp;
 };
 
-export type SerializedMessage = Omit<MessageType, "createdAt"> & {
+export type SerializedMessage = Omit<MessageType, "createdAt" | "content"> & {
   createdAt: SerializedTimestamp;
+  content: SerializeUrlsAndUint8Arrays<MessageType["content"]>;
 };
+
+export const vSerializedMessage = v.object({
+  id: v.string(),
+  threadId: v.string(),
+  content: v.union(vUserContent, vAssistantContent, vToolContent),
+  role: v.union(
+    v.literal("system"),
+    v.literal("user"),
+    v.literal("assistant"),
+    v.literal("tool"),
+  ),
+  type: v.union(
+    v.literal("text"),
+    v.literal("tool-call"),
+    v.literal("tool-result"),
+  ),
+  createdAt: v.number(),
+});
+// type assertions both ways
+const _serializedMessage: SerializedMessage = {} as Infer<
+  typeof vSerializedMessage
+>;
+const _serializedMessage2: Infer<typeof vSerializedMessage> =
+  {} as SerializedMessage;
 
 export type SerializedThread = Omit<
   StorageThreadType,
@@ -71,6 +107,20 @@ export type SerializedThread = Omit<
   createdAt: SerializedTimestamp;
   updatedAt: SerializedTimestamp;
 };
+export const vSerializedThread = v.object({
+  id: v.string(),
+  title: v.optional(v.string()),
+  metadata: v.optional(v.record(v.string(), v.any())),
+  resourceId: v.string(),
+  createdAt: vSerializedTimestamp,
+  updatedAt: vSerializedTimestamp,
+});
+// type assertions both ways
+const _serializedThread: SerializedThread = {} as Infer<
+  typeof vSerializedThread
+>;
+const _serializedThread2: Infer<typeof vSerializedThread> =
+  {} as SerializedThread;
 
 // Inferring from the table schema created in
 // @mastra/core:src/storage/base.ts
@@ -153,7 +203,7 @@ export function mapMastraToSerialized<T extends TABLE_NAMES>(
       const serialized: SerializedMessage = {
         id: row.id,
         threadId: row.threadId,
-        content: mapContentToConvex(row.content),
+        content: serializeContent(row.content),
         role: row.role,
         type: row.type,
         createdAt: serializeDate(row.createdAt),
@@ -197,13 +247,80 @@ export function mapMastraToSerialized<T extends TABLE_NAMES>(
   }
 }
 
-export function mapContentToConvex(
+export function serializeContent(
   content: UserContent | AssistantContent | ToolContent,
-): string {
-  // | Infer<typeof vUserContent>
-  // | Infer<typeof vAssistantContent>
-  // | Infer<typeof vToolContent> {
-  return JSON.stringify(content);
+):
+  | Infer<typeof vUserContent>
+  | Infer<typeof vAssistantContent>
+  | Infer<typeof vToolContent> {
+  if (typeof content === "string") {
+    return content;
+  }
+  const serialized = content.map((part) => {
+    switch (part.type) {
+      case "image":
+        return { ...part, image: serializeDataOrUrl(part.image) };
+      case "file":
+        return { ...part, file: serializeDataOrUrl(part.data) };
+      default:
+        return part;
+    }
+  });
+  return serialized as
+    | Infer<typeof vUserContent>
+    | Infer<typeof vAssistantContent>
+    | Infer<typeof vToolContent>;
+}
+
+export function deserializeContent(
+  content:
+    | Infer<typeof vUserContent>
+    | Infer<typeof vAssistantContent>
+    | Infer<typeof vToolContent>,
+): UserContent | AssistantContent | ToolContent {
+  if (typeof content === "string") {
+    return content;
+  }
+  return content.map((part) => {
+    switch (part.type) {
+      case "image":
+        return { ...part, image: deserializeUrl(part.image) };
+      case "file":
+        return { ...part, file: deserializeUrl(part.data) };
+      default:
+        return part;
+    }
+  }) as UserContent | AssistantContent | ToolContent;
+}
+function serializeDataOrUrl(
+  dataOrUrl: DataContent | URL,
+): ArrayBuffer | string {
+  if (typeof dataOrUrl === "string") {
+    return dataOrUrl;
+  }
+  if (dataOrUrl instanceof ArrayBuffer) {
+    return dataOrUrl; // Already an ArrayBuffer
+  }
+  if (dataOrUrl instanceof URL) {
+    return dataOrUrl.toString();
+  }
+  return dataOrUrl.buffer.slice(
+    dataOrUrl.byteOffset,
+    dataOrUrl.byteOffset + dataOrUrl.byteLength,
+  ) as ArrayBuffer;
+}
+
+function deserializeUrl(urlOrString: string | ArrayBuffer): URL | DataContent {
+  if (typeof urlOrString === "string") {
+    if (
+      urlOrString.startsWith("http://") ||
+      urlOrString.startsWith("https://")
+    ) {
+      return new URL(urlOrString);
+    }
+    return urlOrString;
+  }
+  return urlOrString;
 }
 
 /**

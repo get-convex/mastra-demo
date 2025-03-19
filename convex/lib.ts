@@ -1,15 +1,18 @@
 import { v, Validator } from "convex/values";
 import schema from "./schema";
-import { api, internal } from "./_generated/api";
-import { Doc, Id, TableNames } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
+import { Doc, TableNames } from "./_generated/dataModel";
 import {
   internalAction,
   internalMutation,
   internalQuery,
 } from "./_generated/server";
-import { TABLE_THREADS } from "@mastra/core/storage";
-import { mapSerializedToMastra, SerializedThread } from "../lib/mapping";
-import { StorageThreadType } from "@mastra/core";
+import {
+  SerializedMessage,
+  SerializedThread,
+  vSerializedMessage,
+  vSerializedThread,
+} from "../lib/mapping";
 
 interface StorageColumn {
   type: "text" | "timestamp" | "uuid" | "jsonb" | "integer" | "bigint";
