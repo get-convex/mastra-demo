@@ -7,6 +7,9 @@ import {
   internalMutation,
   internalQuery,
 } from "./_generated/server";
+import { TABLE_THREADS } from "@mastra/core/storage";
+import { mapSerializedToMastra, SerializedThread } from "../lib/mapping";
+import { StorageThreadType } from "@mastra/core";
 
 interface StorageColumn {
   type: "text" | "timestamp" | "uuid" | "jsonb" | "integer" | "bigint";
@@ -142,12 +145,21 @@ export const clearPage = internalMutation({
   },
 });
 
+function threadToSerializedMastra(thread: Doc<"threads">): SerializedThread {
+  const { id, title, metadata, resourceId, createdAt, updatedAt } = thread;
+  return { id, title, metadata, resourceId, createdAt, updatedAt };
+}
+
 export const getThreadById = internalQuery({
   args: { threadId: v.string() },
   handler: async (ctx, args) => {
-    return ctx.db
+    const thread = await ctx.db
       .query("threads")
       .withIndex("id", (q) => q.eq("id", args.threadId))
       .unique();
+    if (!thread) {
+      return null;
+    }
+    return threadToSerializedMastra(thread);
   },
 });

@@ -16,9 +16,10 @@ import {
 import { internal } from "../convex/_generated/api";
 import { ActionCtx } from "../convex/_generated/server";
 import {
-  mapConvexToMastraSchema,
-  mapMastraToConvexSchema,
+  mapSerializedToMastra,
+  mapMastraToSerialized,
   mastraToConvexTableNames,
+  SerializedThread,
 } from "./mapping";
 
 export type ConvexStorageConfig = {
@@ -62,7 +63,7 @@ export class ConvexStorage extends MastraStorage {
     tableName: TABLE_NAMES;
     record: Record<string, any>;
   }): Promise<void> {
-    const convexRecord = mapMastraToConvexSchema(tableName, record as any);
+    const convexRecord = mapMastraToSerialized(tableName, record);
     await this.ctx.runMutation(internal.lib.insert, {
       tableName,
       document: convexRecord,
@@ -79,7 +80,9 @@ export class ConvexStorage extends MastraStorage {
   }): Promise<void> {
     await this.ctx.runMutation(internal.lib.batchInsert, {
       tableName,
-      records,
+      records: records.map((record) =>
+        mapMastraToSerialized(tableName, record),
+      ),
     });
     return;
   }
@@ -108,7 +111,7 @@ export class ConvexStorage extends MastraStorage {
     if (!thread) {
       return null;
     }
-    return mapConvexToMastraSchema(TABLE_THREADS, thread);
+    return mapSerializedToMastra(TABLE_THREADS, thread);
   }
 
   async getThreadsByResourceId({

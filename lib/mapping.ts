@@ -9,14 +9,6 @@ import {
   TABLE_WORKFLOW_SNAPSHOT,
 } from "@mastra/core/storage";
 import type { AssistantContent, ToolContent, UserContent } from "ai";
-import { WithoutSystemFields } from "convex/server";
-import { Infer } from "convex/values";
-import { Doc } from "../convex/_generated/dataModel";
-import {
-  vAssistantContent,
-  vToolContent,
-  vUserContent,
-} from "../convex/ai/types";
 
 // Define the runtime constants first
 export const mastraToConvexTableNames = {
@@ -53,14 +45,70 @@ export type MastraRowTypeMap = {
   [TABLE_TRACES]: any; // Replace with proper type when available
 };
 
-// Type that maps Convex table names to their document types
-export type ConvexDocTypeMap = {
-  snapshots: WithoutSystemFields<Doc<"snapshots">>;
-  evals: WithoutSystemFields<Doc<"evals">>;
-  messages: WithoutSystemFields<Doc<"messages">>;
-  threads: WithoutSystemFields<Doc<"threads">>;
-  traces: WithoutSystemFields<Doc<"traces">>;
+export type SerializedTimestamp = number;
+
+export type SerializedSnapshot = Omit<
+  WorkflowRow,
+  "created_at" | "updated_at" | "snapshot"
+> & {
+  created_at: SerializedTimestamp;
+  updated_at: SerializedTimestamp;
+  snapshot: string;
 };
+
+export type SerializedEval = Omit<EvalRow, "createdAt"> & {
+  createdAt: SerializedTimestamp;
+};
+
+export type SerializedMessage = Omit<MessageType, "createdAt"> & {
+  createdAt: SerializedTimestamp;
+};
+
+export type SerializedThread = Omit<
+  StorageThreadType,
+  "createdAt" | "updatedAt"
+> & {
+  createdAt: SerializedTimestamp;
+  updatedAt: SerializedTimestamp;
+};
+
+// Inferring from the table schema created in
+// @mastra/core:src/storage/base.ts
+export type SerializedTrace = {
+  id: string;
+  parentSpanId: string;
+  traceId: string;
+  name: string;
+  scope: string;
+  kind: string;
+  events: any[];
+  links: any[];
+  status: any;
+  attributes: Record<string, any>;
+  startTime: bigint;
+  endTime: bigint;
+  other: any;
+  createdAt: SerializedTimestamp;
+};
+
+// Type that maps Convex table names to their document types
+export type SerializedTypeMap = {
+  [TABLE_WORKFLOW_SNAPSHOT]: SerializedSnapshot;
+  [TABLE_EVALS]: SerializedEval;
+  [TABLE_MESSAGES]: SerializedMessage;
+  [TABLE_THREADS]: SerializedThread;
+  [TABLE_TRACES]: SerializedTrace;
+};
+
+function serializeDate(date: string | Date | number): number {
+  if (typeof date === "number") {
+    return date;
+  }
+  if (date instanceof Date) {
+    return Number(date);
+  }
+  return Number(new Date(date));
+}
 
 /**
  * Maps a Mastra row to a Convex document
@@ -68,64 +116,82 @@ export type ConvexDocTypeMap = {
  * @param mastraRow Row data from Mastra
  * @returns Properly typed Convex document
  */
-export function mapMastraToConvexSchema<T extends TABLE_NAMES>(
+export function mapMastraToSerialized<T extends TABLE_NAMES>(
   tableName: T,
-  schema: MastraRowTypeMap[T],
-): ConvexDocTypeMap[ConvexTableName<T>] {
+  mastraRow: MastraRowTypeMap[T],
+): SerializedTypeMap[T] {
   switch (tableName) {
     case TABLE_WORKFLOW_SNAPSHOT: {
-      const d = {
-        workflowName: schema.workflow_name,
-        runId: schema.run_id,
-        snapshot: JSON.stringify(schema.snapshot),
-        updatedAt: Number(schema.updated_at),
+      const row = mastraRow as MastraRowTypeMap[typeof TABLE_WORKFLOW_SNAPSHOT];
+      const serialized: SerializedSnapshot = {
+        workflow_name: row.workflow_name,
+        run_id: row.run_id,
+        snapshot: JSON.stringify(row.snapshot),
+        updated_at: serializeDate(row.updated_at),
+        created_at: serializeDate(row.created_at),
       };
-      return d as ConvexDocTypeMap[ConvexTableName<T>];
+      return serialized as SerializedTypeMap[T];
     }
-    case TABLE_EVALS:
-      return {
-        input: schema.input,
-        output: schema.output,
-        result: schema.result,
-        agentName: schema.agentName,
-        metricName: schema.metricName,
-        instructions: schema.instructions,
-        testInfo: schema.testInfo,
-        globalRunId: schema.globalRunId,
-        runId: schema.runId,
-      } as ConvexDocTypeMap[ConvexTableName<T>];
-    case TABLE_MESSAGES:
-      return {
-        id: schema.id,
-        threadId: schema.threadId,
-        content: mapContentToConvex(schema.content),
-        role: schema.role,
-        type: schema.type,
-      } as ConvexDocTypeMap[ConvexTableName<T>];
-    case TABLE_THREADS:
-      return {
-        id: schema.id,
-        title: schema.title,
-        metadata: schema.metadata,
-        resourceId: schema.resourceId,
-        updatedAt: Number(schema.createdAt),
-      } as ConvexDocTypeMap[ConvexTableName<T>];
-    case TABLE_TRACES:
-      return {
-        id: schema.id,
-        parentSpanId: schema.parentSpanId,
-        name: schema.name,
-        traceId: schema.traceId,
-        scope: schema.scope,
-        kind: schema.kind,
-        attributes: schema.attributes,
-        status: schema.status,
-        events: schema.events,
-        links: schema.links,
-        other: schema.other,
-        startTime: schema.startTime,
-        endTime: schema.endTime,
-      } as ConvexDocTypeMap[ConvexTableName<T>];
+    case TABLE_EVALS: {
+      const row = mastraRow as MastraRowTypeMap[typeof TABLE_EVALS];
+      const serialized: SerializedEval = {
+        input: row.input,
+        output: row.output,
+        result: row.result,
+        agentName: row.agentName,
+        metricName: row.metricName,
+        instructions: row.instructions,
+        testInfo: row.testInfo,
+        globalRunId: row.globalRunId,
+        runId: row.runId,
+        createdAt: serializeDate(row.createdAt),
+      };
+      return serialized as SerializedTypeMap[T];
+    }
+    case TABLE_MESSAGES: {
+      const row = mastraRow as MastraRowTypeMap[typeof TABLE_MESSAGES];
+      const serialized: SerializedMessage = {
+        id: row.id,
+        threadId: row.threadId,
+        content: mapContentToConvex(row.content),
+        role: row.role,
+        type: row.type,
+        createdAt: serializeDate(row.createdAt),
+      };
+      return serialized as SerializedTypeMap[T];
+    }
+    case TABLE_THREADS: {
+      const row = mastraRow as MastraRowTypeMap[typeof TABLE_THREADS];
+      const serialized: SerializedThread = {
+        id: row.id,
+        title: row.title,
+        metadata: row.metadata,
+        resourceId: row.resourceId,
+        createdAt: serializeDate(row.createdAt),
+        updatedAt: serializeDate(row.updatedAt),
+      };
+      return serialized as SerializedTypeMap[T];
+    }
+    case TABLE_TRACES: {
+      const row = mastraRow as MastraRowTypeMap[typeof TABLE_TRACES];
+      const serialized: SerializedTrace = {
+        id: row.id,
+        parentSpanId: row.parentSpanId,
+        name: row.name,
+        traceId: row.traceId,
+        scope: row.scope,
+        kind: row.kind,
+        attributes: row.attributes,
+        status: row.status,
+        events: row.events,
+        links: row.links,
+        other: row.other,
+        startTime: row.startTime,
+        endTime: row.endTime,
+        createdAt: serializeDate(row.createdAt),
+      };
+      return serialized as SerializedTypeMap[T];
+    }
     default:
       throw new Error(`Unsupported table name: ${tableName}`);
   }
@@ -133,73 +199,78 @@ export function mapMastraToConvexSchema<T extends TABLE_NAMES>(
 
 export function mapContentToConvex(
   content: UserContent | AssistantContent | ToolContent,
-):
-  | Infer<typeof vUserContent>
-  | Infer<typeof vAssistantContent>
-  | Infer<typeof vToolContent> {
+): string {
+  // | Infer<typeof vUserContent>
+  // | Infer<typeof vAssistantContent>
+  // | Infer<typeof vToolContent> {
   return JSON.stringify(content);
 }
 
 /**
  * Maps a Convex document to a Mastra row
  * @param tableName Mastra table name
- * @param convexDoc Document data from Convex
+ * @param row Data with transfer-safe values
  * @returns Properly typed Mastra row
  */
-export function mapConvexToMastraSchema<T extends TABLE_NAMES>(
+export function mapSerializedToMastra<T extends TABLE_NAMES>(
   tableName: T,
-  convexDoc: ConvexDocTypeMap[ConvexTableName<T>],
+  row: SerializedTypeMap[T],
 ): MastraRowTypeMap[T] {
   switch (tableName) {
     case TABLE_WORKFLOW_SNAPSHOT: {
-      const workflowDoc = convexDoc as ConvexDocTypeMap["snapshots"];
-      return {
-        workflow_name: workflowDoc.workflowName,
-        run_id: workflowDoc.runId,
-        snapshot: JSON.parse(workflowDoc.snapshot),
-      } as MastraRowTypeMap[T];
+      const serialized =
+        row as SerializedTypeMap[typeof TABLE_WORKFLOW_SNAPSHOT];
+      const workflow: WorkflowRow = {
+        workflow_name: serialized.workflow_name,
+        run_id: serialized.run_id,
+        snapshot: JSON.parse(serialized.snapshot),
+        created_at: new Date(serialized.created_at),
+        updated_at: new Date(serialized.updated_at),
+      };
+      return workflow;
     }
     case TABLE_EVALS: {
-      const evalDoc = convexDoc as ConvexDocTypeMap["evals"];
-      return {
-        input: evalDoc.input,
-        output: evalDoc.output,
-        result: evalDoc.result,
-        agentName: evalDoc.agentName,
-        metricName: evalDoc.metricName,
-        instructions: evalDoc.instructions,
-        testInfo: evalDoc.testInfo,
-        globalRunId: evalDoc.globalRunId,
-        runId: evalDoc.runId,
-      } as MastraRowTypeMap[T];
+      const serialized = row as SerializedTypeMap[typeof TABLE_EVALS];
+      const evalRow: EvalRow = {
+        input: serialized.input,
+        output: serialized.output,
+        result: serialized.result,
+        agentName: serialized.agentName,
+        metricName: serialized.metricName,
+        instructions: serialized.instructions,
+        testInfo: serialized.testInfo,
+        globalRunId: serialized.globalRunId,
+        runId: serialized.runId,
+        createdAt: new Date(serialized.createdAt).toISOString(),
+      };
+      return evalRow as MastraRowTypeMap[T];
     }
     case TABLE_MESSAGES: {
-      const messageDoc = convexDoc as ConvexDocTypeMap["messages"];
-      return {
-        id: messageDoc.id,
-        threadId: messageDoc.threadId,
-        content:
-          typeof messageDoc.content === "string"
-            ? JSON.parse(messageDoc.content)
-            : messageDoc.content,
-        role: messageDoc.role,
-        type: messageDoc.type,
-        createdAt: new Date(),
-      } as MastraRowTypeMap[T];
+      const serialized = row as SerializedTypeMap[typeof TABLE_MESSAGES];
+      const messageRow: MessageType = {
+        id: serialized.id,
+        threadId: serialized.threadId,
+        content: serialized.content,
+        role: serialized.role,
+        type: serialized.type,
+        createdAt: new Date(serialized.createdAt),
+      };
+      return messageRow as MastraRowTypeMap[T];
     }
     case TABLE_THREADS: {
-      const threadDoc = convexDoc as ConvexDocTypeMap["threads"];
-      return {
-        id: threadDoc.id,
-        title: threadDoc.title,
-        metadata: threadDoc.metadata,
-        resourceId: threadDoc.resourceId,
-        createdAt: new Date(threadDoc.updatedAt),
-        updatedAt: new Date(threadDoc.updatedAt),
-      } as MastraRowTypeMap[T];
+      const serialized = row as SerializedTypeMap[typeof TABLE_THREADS];
+      const threadRow: StorageThreadType = {
+        id: serialized.id,
+        title: serialized.title,
+        metadata: serialized.metadata,
+        resourceId: serialized.resourceId,
+        createdAt: new Date(serialized.createdAt),
+        updatedAt: new Date(serialized.updatedAt),
+      };
+      return threadRow as MastraRowTypeMap[T];
     }
     case TABLE_TRACES: {
-      const traceDoc = convexDoc as ConvexDocTypeMap["traces"];
+      const traceDoc = row as SerializedTypeMap[typeof TABLE_TRACES];
       return {
         id: traceDoc.id,
         parentSpanId: traceDoc.parentSpanId,
