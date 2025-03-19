@@ -25,3 +25,5 @@ dist-ssr
 
 *.tgz
 .mastra
+.env.development
+mastra-clone
