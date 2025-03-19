@@ -147,7 +147,9 @@ export class ConvexStorage extends MastraStorage {
   }: {
     thread: StorageThreadType;
   }): Promise<StorageThreadType> {
-    // TODO: use action to save thread
+    await this.ctx.runMutation(internal.lib.saveThread, {
+      thread: mapMastraToSerialized(TABLE_THREADS, thread),
+    });
     return thread;
   }
 
@@ -160,9 +162,8 @@ export class ConvexStorage extends MastraStorage {
     title: string;
     metadata: Record<string, unknown>;
   }): Promise<StorageThreadType> {
-    // TODO: use action to update thread
-    return {
-      id,
+    const thread = await this.ctx.runMutation(internal.lib.updateThread, {
+      threadId: id,
       title,
       metadata,
     });
@@ -170,16 +171,26 @@ export class ConvexStorage extends MastraStorage {
   }
 
   async deleteThread({ threadId }: { threadId: string }): Promise<void> {
-    // TODO: use action to delete thread
+    await this.ctx.runMutation(internal.lib.deleteThread, { threadId });
     return;
   }
 
-  async getMessages<T extends MessageType[]>({
+  async getMessages<T extends MessageType>({
+    threadConfig,
     threadId,
     selectBy,
-  }: StorageGetMessagesArg): Promise<T> {
-    // TODO: use action to get messages
-    return [] as unknown as T;
+  }: StorageGetMessagesArg): Promise<T[]> {
+    const messages: SerializedMessage[] = await this.ctx.runQuery(
+      internal.lib.getMessagesPage,
+      {
+        threadId,
+        selectBy,
+        // memoryConfig: threadConfig,
+      },
+    );
+    return messages.map((message) =>
+      mapSerializedToMastra(TABLE_MESSAGES, message),
+    ) as T[];
   }
 
   async saveMessages({
