@@ -119,8 +119,26 @@ export class ConvexStorage extends MastraStorage {
   }: {
     resourceId: string;
   }): Promise<StorageThreadType[]> {
-    // TODO: use action to get threads by resource id
-    return [];
+    const threads: SerializedThread[] = [];
+    let cursor: string | null = null;
+    while (true) {
+      const page: {
+        threads: SerializedThread[];
+        continueCursor: string;
+        isDone: boolean;
+      } = await this.ctx.runQuery(internal.lib.getThreadsByResourceId, {
+        resourceId,
+        cursor,
+      });
+      threads.push(...page.threads);
+      if (page.isDone) {
+        break;
+      }
+      cursor = page.continueCursor;
+    }
+    return threads.map((thread) =>
+      mapSerializedToMastra(TABLE_THREADS, thread),
+    );
   }
 
   async saveThread({

@@ -163,3 +163,31 @@ export const getThreadById = internalQuery({
     return threadToSerializedMastra(thread);
   },
 });
+
+export const getThreadsByResourceId = internalQuery({
+  args: {
+    resourceId: v.string(),
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    threads: SerializedThread[];
+    continueCursor: string;
+    isDone: boolean;
+  }> => {
+    const threads = await ctx.db
+      .query("threads")
+      .withIndex("resourceId", (q) => q.eq("resourceId", args.resourceId))
+      .paginate({
+        numItems: 1000,
+        cursor: args.cursor ?? null,
+      });
+    return {
+      threads: threads.page.map(threadToSerializedMastra),
+      continueCursor: threads.continueCursor,
+      isDone: threads.isDone,
+    };
+  },
+});
