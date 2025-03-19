@@ -7,7 +7,7 @@ import { Step } from "@mastra/core/workflows";
 import { Workflow } from "@mastra/core/workflows";
 import { openai } from "@ai-sdk/openai";
 import { Memory } from "@mastra/memory";
-import { InMemoryStorage } from "../lib/storage";
+import { InMemoryStorage } from "../lib/in-memory";
 import { InMemoryVector } from "../lib/vector";
 
 import crypto from "crypto";
