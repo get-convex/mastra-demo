@@ -8,8 +8,8 @@ import {
   internalQuery,
 } from "./_generated/server";
 import {
-  SerializedMessage,
-  SerializedThread,
+  type SerializedMessage,
+  type SerializedThread,
   vSerializedMessage,
   vSerializedThread,
 } from "../lib/mapping";

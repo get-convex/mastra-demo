@@ -1,24 +1,35 @@
-import type { MessageType, StorageThreadType, WorkflowRow } from "@mastra/core";
-import type { EvalRow } from "@mastra/core/storage";
-import {
-  TABLE_EVALS,
-  TABLE_MESSAGES,
-  TABLE_NAMES,
-  TABLE_THREADS,
-  TABLE_TRACES,
-  TABLE_WORKFLOW_SNAPSHOT,
-} from "@mastra/core/storage";
+import type {
+  EvalRow,
+  MessageType,
+  StorageThreadType,
+  WorkflowRow,
+} from "@mastra/core";
 import type {
   AssistantContent,
   DataContent,
   ToolContent,
   UserContent,
 } from "ai";
+import type { Infer } from "convex/values";
 import { v } from "convex/values";
-import { Infer } from "convex/values";
-import { SerializeUrlsAndUint8Arrays, vToolContent } from "../convex/ai/types";
-import { vAssistantContent } from "../convex/ai/types";
-import { vUserContent } from "../convex/ai/types";
+import {
+  SerializeUrlsAndUint8Arrays,
+  vAssistantContent,
+  vToolContent,
+  vUserContent,
+} from "../convex/ai/types";
+
+const TABLE_WORKFLOW_SNAPSHOT = "mastra_workflow_snapshot";
+const TABLE_EVALS = "mastra_evals";
+const TABLE_MESSAGES = "mastra_messages";
+const TABLE_THREADS = "mastra_threads";
+const TABLE_TRACES = "mastra_traces";
+export type TABLE_NAMES =
+  | typeof TABLE_WORKFLOW_SNAPSHOT
+  | typeof TABLE_EVALS
+  | typeof TABLE_MESSAGES
+  | typeof TABLE_THREADS
+  | typeof TABLE_TRACES;
 
 // Define the runtime constants first
 export const mastraToConvexTableNames = {
@@ -93,12 +104,6 @@ export const vSerializedMessage = v.object({
   ),
   createdAt: v.number(),
 });
-// type assertions both ways
-const _serializedMessage: SerializedMessage = {} as Infer<
-  typeof vSerializedMessage
->;
-const _serializedMessage2: Infer<typeof vSerializedMessage> =
-  {} as SerializedMessage;
 
 export type SerializedThread = Omit<
   StorageThreadType,
@@ -115,12 +120,6 @@ export const vSerializedThread = v.object({
   createdAt: vSerializedTimestamp,
   updatedAt: vSerializedTimestamp,
 });
-// type assertions both ways
-const _serializedThread: SerializedThread = {} as Infer<
-  typeof vSerializedThread
->;
-const _serializedThread2: Infer<typeof vSerializedThread> =
-  {} as SerializedThread;
 
 // Inferring from the table schema created in
 // @mastra/core:src/storage/base.ts
