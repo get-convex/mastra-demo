@@ -1,10 +1,7 @@
 import { Mastra } from "@mastra/core/mastra";
 import { Step } from "@mastra/core/workflows";
 import { Workflow } from "@mastra/core/workflows";
-import { ConvexStorage } from "../../lib/storage";
 import { agent } from "./agents/test";
-
-export const storage = new ConvexStorage({ config: {} });
 
 const step = new Step({
   id: "test",
@@ -27,5 +24,4 @@ export const mastra = new Mastra({
   },
   agents: { test: agent },
   workflows: { test: workflow },
-  storage,
 });

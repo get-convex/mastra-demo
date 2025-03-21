@@ -7,8 +7,8 @@ import { Step } from "@mastra/core/workflows";
 import { Workflow } from "@mastra/core/workflows";
 import { openai } from "@ai-sdk/openai";
 import { Memory } from "@mastra/memory";
-import { InMemoryStorage } from "../lib/in-memory";
-import { InMemoryVector } from "../lib/vector";
+import { InMemoryStorage } from "../lib/in-memory-storage";
+import { InMemoryVector } from "../lib/in-memory-vector";
 import { z } from "zod";
 import crypto from "crypto";
 import { createTool } from "@mastra/core/tools";
@@ -58,7 +58,9 @@ const step = new Step({
   }),
   async execute(context) {
     const { content } = context.context.inputData;
-    const gen = await agent.generate([{ role: "user", content }]);
+    const gen = await agent.generate([
+      { role: "user", content: "call the test tool" },
+    ]);
     return {
       foo: gen.response.messages.at(-1)?.content,
     };
@@ -78,11 +80,16 @@ const step2 = new Step({
   },
 });
 
+// You could also import a workflow from mastra/src
 const workflow = new Workflow({
   name: "test",
   retryConfig: { attempts: 2, delay: 1000 },
 })
-  .step(step, {})
+  .step(step, {
+    variables: {
+      content: { step: "trigger", path: "." },
+    },
+  })
   .then(step2, {
     variables: {
       bar: { step, path: "boo" },
@@ -90,6 +97,10 @@ const workflow = new Workflow({
   })
   .step(step3);
 
+// NOTE: we don't import the other Mastra, since it might be using storage
+// we don't support. In the future we'll hopefully have an isomorphic client
+// that will work in `mastra dev` as a client to Convex, and in `convex dev`
+// that talks to the Component directly
 const mastra = new Mastra({
   agents: { test: agent },
   workflows: { test: workflow },
@@ -99,9 +110,11 @@ const mastra = new Mastra({
 export const a = action({
   args: {},
   handler: async (ctx, args) => {
-    const testWorkflow = mastra.getWorkflow("test");
-    const run = testWorkflow.createRun();
-    const workflowResult = await run.start();
+    const testFromMastra = mastra.getWorkflow("test");
+    const run = testFromMastra.createRun();
+    const workflowResult = await run.start({
+      triggerData: { content: "call the test tool" },
+    });
     // const gen = await agent.generate([
     //   { role: "user", content: "call the test tool" },
     // ]);
