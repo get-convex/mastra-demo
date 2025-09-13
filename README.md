@@ -1,6 +1,6 @@
 # Mastra + Convex exploration
 
-WORK IN PROGRESS
+Paused for now. Context: https://stack.convex.dev/reimplementing-mastra-regrets
 
 Run these once to set it up:
 
